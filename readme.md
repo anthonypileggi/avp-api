@@ -1,0 +1,43 @@
+
+### Introduction
+
+This is an API built using R Plumber and Google AppEngine, based on [this guide](https://github.com/MarkEdmondson1234/serverless-R-API-appengine).
+
+The API is deployed at <https://api.sqwerl.life> (e.g., try <https://api.sqwerl.life/plot>).
+
+### Bugs
+
+-   Why is nothing showing up at <https://api.sqwerl.life/swagger.json> ?
+
+For debugging, go to folder and run `gcloud app logs tail -s default`, then try using the API and see what happens...
+
+### Setup Google Cloud Endpoints (TODO)
+
+Run this code to generate the openapi.yam for Google Cloud Endpoints.
+
+``` r
+library(yaml)
+library(jsonlite)
+
+
+json <- jsonlite::fromJSON(sprintf("https://api.appspot.com/swagger.json", projectId))
+
+make_openapi <- function(projectId){
+  json <- jsonlite::fromJSON(sprintf("https://%s.appspot.com/swagger.json", projectId))
+  json$host <- sprintf("%s.appspot.com", projectId)
+  
+  ## add operationId to each endpoint
+  ohgod <- lapply(names(json$paths), 
+                  function(x) {lapply(json$paths[[x]], 
+                                      function(verb) {verb$operationId <- basename(x);verb})})
+  json$paths <- setNames(ohgod, names(json$paths))
+
+  # silly formatting
+  yaml <- gsub("application/json", "[application/json]", yaml::as.yaml(json))
+  yaml <- gsub("schemes: http", "schemes: [http]", yaml)
+  
+  writeLines(yaml, con = "openapi.yaml")
+}
+
+make_openapi("avp-consulting")
+```
